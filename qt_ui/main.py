@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 import requests
 from PySide6.QtWidgets import (
@@ -14,13 +15,15 @@ from PySide6.QtWidgets import (
 )
 
 
+BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000").rstrip("/")
+
+
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("Jira AI Analyzer - Qt UI")
         self.resize(900, 700)
 
-        self.backend_url = QLineEdit("http://127.0.0.1:8000")
         self.issue_key = QLineEdit("")
         self.output = QTextEdit()
         self.output.setReadOnly(True)
@@ -32,8 +35,7 @@ class MainWindow(QMainWindow):
         report_btn.clicked.connect(self.get_report)
 
         layout = QVBoxLayout()
-        layout.addWidget(QLabel("后端地址"))
-        layout.addWidget(self.backend_url)
+        layout.addWidget(QLabel(f"后端地址: {BACKEND_URL}"))
         layout.addWidget(QLabel("Issue Key (如 OPS-123)"))
         layout.addWidget(self.issue_key)
         layout.addWidget(analyze_btn)
@@ -51,9 +53,8 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "提示", "请先输入 Issue Key")
             return
 
-        base = self.backend_url.text().rstrip("/")
         try:
-            resp = requests.post(f"{base}/analyze/{issue_key}", timeout=300)
+            resp = requests.post(f"{BACKEND_URL}/analyze/{issue_key}", timeout=300)
             resp.raise_for_status()
             self.output.setPlainText(json.dumps(resp.json(), ensure_ascii=False, indent=2))
         except Exception as e:
@@ -65,9 +66,8 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "提示", "请先输入 Issue Key")
             return
 
-        base = self.backend_url.text().rstrip("/")
         try:
-            resp = requests.get(f"{base}/report/{issue_key}", timeout=60)
+            resp = requests.get(f"{BACKEND_URL}/report/{issue_key}", timeout=60)
             resp.raise_for_status()
             self.output.setPlainText(json.dumps(resp.json(), ensure_ascii=False, indent=2))
         except Exception as e:

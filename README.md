@@ -32,6 +32,7 @@ pip install -r requirements.txt
 - `JIRA_BASE_URL`：旧 Jira 地址（默认 `https://jira.n.xiaomi.com`）
 - `NEW_JIRA_BASE_URL`：新 Jira 地址（默认 `https://jira-phone.mioffice.cn`）
 - `JIRA_API_TOKEN`：Jira 访问令牌（Bearer）
+- `BACKEND_URL`：Qt UI 连接后端地址（默认 `http://127.0.0.1:8000`）
 
 ## 3. 启动后端
 
@@ -40,6 +41,8 @@ uvicorn backend.main:app --reload --port 8000
 ```
 
 ## 4. 启动 Qt UI
+
+Qt UI 不再要求手动输入后端地址，会直接读取 `.env` 中的 `BACKEND_URL`（默认 `http://127.0.0.1:8000`）。
 
 ```bash
 python qt_ui/main.py
