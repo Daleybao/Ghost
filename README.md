@@ -1,15 +1,14 @@
-# Jira AI Analyzer (Python + Company AI API + Qt UI)
+# Jira AI Analyzer（纯 Qt 本地版）
 
-一个可运行的完整示例（实时读取 Jira，不做本地历史导入）：
+一个可运行的本地工具（**无后端服务**）：
 
-- 对指定 issue 进行实时分析
-- 分析时实时从 Jira 拉取最近历史问题作为候选
+- 在 Qt 客户端里直接读取 Jira 并分析 issue
 - 同时支持两个 Jira：
   - `https://jira.n.xiaomi.com`
   - `https://jira-phone.mioffice.cn`
 - 基于公司 AI Embedding API 做相似问题检索
 - 基于公司 AI Analysis API 生成结构化分析报告
-- 提供 FastAPI 后端 + PySide6(Qt) 桌面 UI
+- 报告保存到本地 SQLite（`DB_PATH`）
 
 ## 1. 安装
 
@@ -32,32 +31,21 @@ pip install -r requirements.txt
 - `JIRA_BASE_URL`：旧 Jira 地址（默认 `https://jira.n.xiaomi.com`）
 - `NEW_JIRA_BASE_URL`：新 Jira 地址（默认 `https://jira-phone.mioffice.cn`）
 - `JIRA_API_TOKEN`：Jira 访问令牌（Bearer）
-- `BACKEND_URL`：Qt UI 连接后端地址（默认 `http://127.0.0.1:8000`）
 
-## 3. 启动后端
-
-```bash
-uvicorn backend.main:app --reload --port 8000
-```
-
-## 4. 启动 Qt UI
-
-Qt UI 不再要求手动输入后端地址，会直接读取 `.env` 中的 `BACKEND_URL`（默认 `http://127.0.0.1:8000`）。
+## 3. 启动（仅 Qt）
 
 ```bash
 python qt_ui/main.py
 ```
 
-## 5. 可用接口
+## 4. 使用方式
 
-- `POST /analyze/{issue_key}`：实时拉取 issue 并分析
-- `POST /webhook/jira`：接收 Jira webhook 后触发分析
-- `GET /report/{issue_key}`：查看已保存报告
-
-## 6. 处理流程
-
-1. 实时读取当前 issue（优先在两个 Jira 中顺序查找）。
-2. 从两个 Jira 拉取最近 `CANDIDATE_POOL_SIZE` 条历史 issue（排除当前 issue）。
-3. 用 embedding 计算相似度，取前 `TOP_K` 作为上下文。
-4. 调用分析接口输出结构化 JSON。
-5. 保存报告到本地 SQLite（只保存报告，不保存历史库）。
+1. 输入 Issue Key（如 `OPS-123`）
+2. 点击“实时分析Issue”
+3. 工具会本地执行：
+   - 拉取当前 issue
+   - 拉取候选历史 issue（`CANDIDATE_POOL_SIZE`）
+   - embedding 相似度排序（`TOP_K`）
+   - 调用 AI 生成报告
+   - 存储到本地 SQLite
+4. 点击“查询本地报告”可读取已存结果

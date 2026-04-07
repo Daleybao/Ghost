@@ -1,7 +1,5 @@
 import json
-import os
 import sys
-import requests
 from PySide6.QtWidgets import (
     QApplication,
     QLabel,
@@ -14,15 +12,21 @@ from PySide6.QtWidgets import (
     QMessageBox,
 )
 
-
-BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000").rstrip("/")
+from backend.analyzer import Analyzer
+from backend.jira_client import JiraClient
+from backend.storage import Storage
+from backend.config import settings
 
 
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("Jira AI Analyzer - Qt UI")
+        self.setWindowTitle("Jira AI Analyzer - 纯Qt本地版")
         self.resize(900, 700)
+
+        self.storage = Storage()
+        self.analyzer = Analyzer(self.storage)
+        self.jira = JiraClient()
 
         self.issue_key = QLineEdit("")
         self.output = QTextEdit()
@@ -31,11 +35,11 @@ class MainWindow(QMainWindow):
         analyze_btn = QPushButton("实时分析Issue")
         analyze_btn.clicked.connect(self.analyze_issue)
 
-        report_btn = QPushButton("查询已保存报告")
+        report_btn = QPushButton("查询本地报告")
         report_btn.clicked.connect(self.get_report)
 
         layout = QVBoxLayout()
-        layout.addWidget(QLabel(f"后端地址: {BACKEND_URL}"))
+        layout.addWidget(QLabel("运行模式：纯Qt本地运行（无后端服务）"))
         layout.addWidget(QLabel("Issue Key (如 OPS-123)"))
         layout.addWidget(self.issue_key)
         layout.addWidget(analyze_btn)
@@ -54,9 +58,11 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            resp = requests.post(f"{BACKEND_URL}/analyze/{issue_key}", timeout=300)
-            resp.raise_for_status()
-            self.output.setPlainText(json.dumps(resp.json(), ensure_ascii=False, indent=2))
+            issue = self.jira.fetch_issue(issue_key)
+            candidates = self.jira.fetch_recent_issues(issue_key=issue_key, limit=settings.candidate_pool_size)
+            similar = self.analyzer.rank_similar(issue, candidates)
+            report = self.analyzer.analyze_issue(issue, similar)
+            self.output.setPlainText(json.dumps(report.model_dump(), ensure_ascii=False, indent=2))
         except Exception as e:
             QMessageBox.critical(self, "错误", str(e))
 
@@ -67,9 +73,11 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            resp = requests.get(f"{BACKEND_URL}/report/{issue_key}", timeout=60)
-            resp.raise_for_status()
-            self.output.setPlainText(json.dumps(resp.json(), ensure_ascii=False, indent=2))
+            report = self.storage.get_report(issue_key)
+            if not report:
+                QMessageBox.information(self, "提示", "本地没有该 Issue 的分析报告")
+                return
+            self.output.setPlainText(json.dumps(report, ensure_ascii=False, indent=2))
         except Exception as e:
             QMessageBox.critical(self, "错误", str(e))
 
